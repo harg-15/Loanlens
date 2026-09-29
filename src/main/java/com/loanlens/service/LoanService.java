@@ -1,6 +1,7 @@
 package com.loanlens.service;
 
 import com.loanlens.dto.request.LoanRequest;
+import com.loanlens.dto.request.LoanUpdateRequest;
 import com.loanlens.dto.response.InstallmentResponse;
 import com.loanlens.dto.response.LoanResponse;
 import com.loanlens.entity.*;
@@ -140,6 +141,41 @@ public class LoanService {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         return loanRepository.findAll(spec).stream().map(this::mapToResponse).toList();
+    }
+
+    @Transactional
+    public LoanResponse updateLoan(Long id, LoanUpdateRequest request) {
+        Loan loan = loanRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Loan not found: " + id));
+
+        if (request.getStatus() != null) {
+            loan.setStatus(request.getStatus());
+        }
+        if (request.getCollateralDetails() != null) {
+            loan.setCollateralDetails(request.getCollateralDetails());
+        }
+        if (request.getAssignedOfficerId() != null) {
+            User officer = userRepository.findById(request.getAssignedOfficerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Officer not found: " + request.getAssignedOfficerId()));
+            loan.setAssignedOfficer(officer);
+        }
+
+        loanRepository.save(loan);
+        return mapToResponse(loan);
+    }
+
+    @Transactional
+    public void deleteLoan(Long id) {
+        Loan loan = loanRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Loan not found: " + id));
+
+        boolean hasRepayments = loan.getInstallments().stream()
+                .anyMatch(installment -> !installment.getRepayments().isEmpty());
+        if (hasRepayments) {
+            throw new BadRequestException("Cannot delete a loan that already has recorded repayments: " + id);
+        }
+
+        loanRepository.delete(loan);
     }
 
     @Transactional(readOnly = true)

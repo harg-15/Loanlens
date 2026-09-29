@@ -1,6 +1,7 @@
 package com.loanlens.controller;
 
 import com.loanlens.dto.request.LoanRequest;
+import com.loanlens.dto.request.LoanUpdateRequest;
 import com.loanlens.dto.response.InstallmentResponse;
 import com.loanlens.dto.response.LoanResponse;
 import com.loanlens.enums.LoanStatus;
@@ -65,5 +66,20 @@ public class LoanController {
     @Operation(summary = "Get EMI installment schedule for a loan")
     public ResponseEntity<List<InstallmentResponse>> getInstallments(@PathVariable Long loanId) {
         return ResponseEntity.ok(loanService.getLoanInstallments(loanId));
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyRole('LOAN_OFFICER', 'ADMIN')")
+    @Operation(summary = "Update editable loan fields (status, collateral, assigned officer)")
+    public ResponseEntity<LoanResponse> updateLoan(@PathVariable Long id, @RequestBody LoanUpdateRequest request) {
+        return ResponseEntity.ok(loanService.updateLoan(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Delete a loan (only if it has no recorded repayments)")
+    public ResponseEntity<Void> deleteLoan(@PathVariable Long id) {
+        loanService.deleteLoan(id);
+        return ResponseEntity.noContent().build();
     }
 }
